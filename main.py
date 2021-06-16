@@ -1,0 +1,59 @@
+from pathlib import Path
+import subprocess as sp
+
+import sys
+
+def view_workspace(workspace_dir, dsi_studio_path):
+    workspace_dir = Path(workspace_dir)
+    assert workspace_dir.exists()
+    source_dir = workspace_dir.joinpath('slices')
+    source_file = list(source_dir.glob('*.nii*'))[0]
+    query = [str(dsi_studio_path),
+             '--action=vis',
+             f'--source={str(source_file)}',
+             '--stay_open=1',
+             f'--cmd=load_workspace,{str(workspace_dir)}+add_surface']
+    res = sp.check_output(query)
+
+def get_dsi_path():
+    dsi_path_mac = Path('/Applications/dsi_studio.app/Contents/MacOS/dsi_studio')
+    if dsi_path_mac.exists():
+        dsi_studio_path = dsi_path_mac
+    else:
+        dsi_studio_path = Path(input('Please enter the path to the dsi studio executable:'))
+
+    if not dsi_studio_path.exists():
+        print('The path to the dsi studio executable could not be found.')
+        sys.exit(1)
+
+    return dsi_studio_path
+
+
+if __name__ == "__main__":
+    usage = """python main.py [workspace list]"""
+
+    if not len(sys.argv) == 2:
+        print(usage)
+        sys.exit(1)
+
+    dsi_path = get_dsi_path()
+
+    workspace_list = Path(sys.argv[1])
+    assert workspace_list.exists()
+
+    with open(workspace_list, 'r') as fopen:
+        lines = fopen.readlines()
+
+    for line_num, line in enumerate(lines):
+        if line.strip() == '':
+            continue
+        subj_id, workspace_dir = line.strip().split(',')
+        workspace_dir = Path(workspace_dir)
+        if not workspace_dir.exists():
+            print(f'Could not find the workspace directory {workspace_dir}')
+            continue
+
+        print(f'Loading subject {subj_id} ({line_num+1} of {len(lines)})\n')
+        view_workspace(workspace_dir, dsi_path)
+
+        print(20*'=')
