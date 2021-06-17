@@ -30,7 +30,7 @@ def get_dsi_path():
 
 
 if __name__ == "__main__":
-    usage = """python main.py [workspace list]"""
+    usage = """python main.py [workspace list/main directory]"""
 
     if not len(sys.argv) == 2:
         print(usage)
@@ -41,19 +41,39 @@ if __name__ == "__main__":
     workspace_list = Path(sys.argv[1])
     assert workspace_list.exists()
 
-    with open(workspace_list, 'r') as fopen:
-        lines = fopen.readlines()
+    if workspace_list.is_file():
+        with open(workspace_list, 'r') as fopen:
+            lines = fopen.readlines()
 
-    for line_num, line in enumerate(lines):
-        if line.strip() == '':
-            continue
-        subj_id, workspace_dir = line.strip().split(',')
-        workspace_dir = Path(workspace_dir)
-        if not workspace_dir.exists():
-            print(f'Could not find the workspace directory {workspace_dir}')
-            continue
+        for line_num, line in enumerate(lines):
+            if line.strip() == '':
+                continue
+            subj_id, workspace_dir = line.strip().split(',')
+            workspace_dir = Path(workspace_dir)
+            if not workspace_dir.exists():
+                print(f'Could not find the workspace directory {workspace_dir}')
+                continue
 
-        print(f'Loading subject {subj_id} ({line_num+1} of {len(lines)})\n')
-        view_workspace(workspace_dir, dsi_path)
+            print(f'Loading subject {subj_id} ({line_num+1} of {len(lines)})\n')
+            view_workspace(workspace_dir, dsi_path)
 
-        print(20*'=')
+            print(20*'=')
+    elif workspace_list.is_dir():
+        subject_dirs = list(workspace_list.iterdir())
+        n_dirs = len(subject_dirs)
+        for line_num, subject_dir in enumerate(subject_dirs):
+            subj_id = subject_dir.name
+            if subject_dir.name == '.DS_Store':
+                continue
+            if not subject_dir.is_dir():
+                continue
+
+            workspace_dir = subject_dir.joinpath('DSI_workspace')
+            if not workspace_dir.exists():
+                print(f'Could not find the workspace directory {workspace_dir}')
+                continue
+
+            print(f'Loading subject {subj_id} ({line_num+1} of {n_dirs})\n')
+            view_workspace(workspace_dir, dsi_path)
+
+            print(20*'=')
