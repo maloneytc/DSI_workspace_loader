@@ -9,7 +9,8 @@ def view_workspace(workspace_dir, dsi_studio_path):
     workspace_dir = Path(workspace_dir)
     assert workspace_dir.exists()
     source_dir = workspace_dir.joinpath('slices')
-    source_file = list(source_dir.glob('*.nii*'))[0]
+    source_files = list(source_dir.glob('*.nii*')) + list(source_dir.glob('*.fib.gz'))
+    source_file = source_files[0]
     query = [str(dsi_studio_path),
              '--action=vis',
              f'--source={str(source_file)}',
