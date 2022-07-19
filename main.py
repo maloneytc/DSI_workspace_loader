@@ -49,7 +49,11 @@ if __name__ == "__main__":
         for line_num, line in enumerate(lines):
             if line.strip() == '':
                 continue
-            subj_id, workspace_dir = line.strip().split(',')
+            try:
+            	subj_id, workspace_dir = line.strip().split(',')
+            except ValueError:
+                subj_id = None
+                workspace_dir = line.strip()
             workspace_dir = Path(workspace_dir)
             if not workspace_dir.exists():
                 print(f'Could not find the workspace directory {workspace_dir}')
