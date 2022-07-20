@@ -41,17 +41,20 @@ def main(file_path):
                         display_row_numbers=True,
                         justification='right',
                         num_rows=10,
+                        vertical_scroll_only=False,
                         alternating_row_color='lightblue',
                         key='-TABLE-',
                         row_height=35,
                         tooltip='This is a table')],
               [sg.Button('Open')],
+              [sg.Button('Approve all'), sg.Button('Exclude all')],
               [[sg.Button(f'Approve {track}'), sg.Button(f'Exclude {track}'), sg.Button(f'Comment {track}')] for track in tracks],
               [sg.Button('Save')],
              ]
 
     # ------ Create Window ------
     window = sg.Window('QA Table', layout,
+                        resizable=True
                        # font='Helvetica 25',
                        )
 
@@ -89,6 +92,17 @@ def main(file_path):
                 window['-TABLE-'].update(values=data, select_rows=[selected_value])
             else:
                 sg.popup('Workspace path not found!')
+        elif event == 'Approve all':
+            selected_values = values.get('-TABLE-')
+            if selected_values == []:
+                #TODO: Add popup
+                continue
+            selected_value = selected_values[0]
+            for track in tracks:
+                df.loc[selected_value, f'{track} Approved'] = True
+            data = dataframe_to_lists(df)
+            data_saved = False
+            window['-TABLE-'].update(values=data, select_rows=[selected_value])
         elif 'Approve' in event:
             track = event.replace('Approve ','')
             print(track)
@@ -99,6 +113,17 @@ def main(file_path):
                 continue
             selected_value = selected_values[0]
             df.loc[selected_value, f'{track} Approved'] = True
+            data = dataframe_to_lists(df)
+            data_saved = False
+            window['-TABLE-'].update(values=data, select_rows=[selected_value])
+        elif event == 'Exclude all':
+            selected_values = values.get('-TABLE-')
+            if selected_values == []:
+                #TODO: Add popup
+                continue
+            selected_value = selected_values[0]
+            for track in tracks:
+                df.loc[selected_value, f'{track} Approved'] = False
             data = dataframe_to_lists(df)
             data_saved = False
             window['-TABLE-'].update(values=data, select_rows=[selected_value])
