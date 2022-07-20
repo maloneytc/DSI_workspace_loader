@@ -47,7 +47,7 @@ def main(file_path):
                         row_height=35,
                         tooltip='This is a table')],
               [sg.Button('Open')],
-              [sg.Button('Approve all'), sg.Button('Exclude all')],
+              [sg.Button('Approve all'), sg.Button('Exclude all'), sg.Button(f'Comment all')],
               [[sg.Button(f'Approve {track}'), sg.Button(f'Exclude {track}'), sg.Button(f'Comment {track}')] for track in tracks],
               [sg.Button('Save')],
              ]
@@ -105,7 +105,6 @@ def main(file_path):
             window['-TABLE-'].update(values=data, select_rows=[selected_value])
         elif 'Approve' in event:
             track = event.replace('Approve ','')
-            print(track)
             assert track in tracks
             selected_values = values.get('-TABLE-')
             if selected_values == []:
@@ -129,7 +128,6 @@ def main(file_path):
             window['-TABLE-'].update(values=data, select_rows=[selected_value])
         elif 'Exclude' in event:
             track = event.replace('Exclude ','')
-            print(track)
             assert track in tracks
             selected_values = values.get('-TABLE-')
             if selected_values == []:
@@ -140,8 +138,19 @@ def main(file_path):
             data = dataframe_to_lists(df)
             data_saved = False
             window['-TABLE-'].update(values=data, select_rows=[selected_value])
+        elif event == 'Comment all':
+            comment = sg.popup_get_text(f'Comment:')
+            selected_values = values.get('-TABLE-')
+            if selected_values == []:
+                #TODO: Add popup
+                continue
+            selected_value = selected_values[0]
+            for track in tracks:
+                df.loc[selected_value, f'{track} Comment'] = comment
+            data = dataframe_to_lists(df)
+            data_saved = False
+            window['-TABLE-'].update(values=data, select_rows=[selected_value])
         elif 'Comment' in event:
-            print(track)
             track = event.replace('Comment ','')
             assert track in tracks
             comment = sg.popup_get_text(f'{track} Comment:')
