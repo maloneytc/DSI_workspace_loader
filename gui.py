@@ -13,35 +13,26 @@ import pdb
     Basic use of the Table Element
 """
 
-sg.theme('Dark Blue 3')
+sg.theme('BlueMono')
 
 
 # ------ Some functions to help generate data for the table ------
-def word():
-    return ''.join(random.choice(string.ascii_lowercase) for i in range(10))
-def number(max_val=1000):
-    return random.randint(0, max_val)
-
-def make_table(num_rows, num_cols):
-    data = [[j for j in range(num_cols)] for i in range(num_rows)]
-    data[0] = [word() for __ in range(num_cols)]
-    for i in range(1, num_rows):
-        data[i] = [word(), *[number() for i in range(num_cols - 1)]]
-    return data
+def dataframe_to_lists(dataframe):
+    return dataframe.to_numpy().tolist()
 
 def main(file_path):
-
+    file_path = Path(file_path)
     dsi_studio_path = dwl.get_dsi_path()
     #df = pd.read_csv(file_path, names=['Path'])
     df = pd.read_csv(file_path)
 
-
     # ------ Make the Table Data ------
     # # TODO: Change to just take a list of directories and construct the Dataframe from that
-    data = df.to_numpy().tolist()
+    data = dataframe_to_lists(df)
     headings = list(df.columns)
-    # data = make_table(num_rows=15, num_cols=6)
-    #headings = [str(data[0][x])+'     ..' for x in range(len(data[0]))]
+    tracks = [this.replace(' Approved', '') for this in headings if 'Approved' in this]
+    print(tracks)
+    data_saved = True # Set to True when the data is the same as on file and False when not
 
     # ------ Window Layout ------
     layout = [[sg.Table(values=data, headings=headings, max_col_width=55,
@@ -49,48 +40,98 @@ def main(file_path):
                         auto_size_columns=True,
                         display_row_numbers=True,
                         justification='right',
-                        num_rows=df.shape[0],
-                        alternating_row_color='green',
+                        num_rows=10,
+                        alternating_row_color='lightblue',
                         key='-TABLE-',
                         row_height=35,
                         tooltip='This is a table')],
-              [sg.Button('Read'), sg.Button('Double'), sg.Button('Open'), sg.Button('Approve')],
-              [sg.Text('Read = read which rows are selected')],
-              [sg.Text('Double = double the amount of data in the table')],
-              [sg.Text('Change Colors = Changes the colors of rows 8 and 9')]]
-
-    #XXX Add export button
+              [sg.Button('Open')],
+              [[sg.Button(f'Approve {track}'), sg.Button(f'Exclude {track}'), sg.Button(f'Comment {track}')] for track in tracks],
+              [sg.Button('Save')],
+             ]
 
     # ------ Create Window ------
-    window = sg.Window('The Table Element', layout,
+    window = sg.Window('QA Table', layout,
                        # font='Helvetica 25',
                        )
+
+    def save_results(default_path):
+        save_file = sg.popup_get_file('Select file to save results to:', default_path=str(default_path))
+        save_file = Path(save_file)
+        df.to_csv(save_file, index=False)
+        data_saved = True
+
 
     # ------ Event Loop ------
     while True:
         event, values = window.read()
         print(event, values)
+
         if event == sg.WIN_CLOSED:
+            #res = sg.popup_ok_cancel('Have you saved your results?')
+            #print(res)
+            if not data_saved:
+                save_results(file_path)
             break
-        if event == 'Double':
-            for i in range(len(data)):
-                data.append(data[i])
-            window['-TABLE-'].update(values=data)
-        elif event == 'Open':
+
+        if event == 'Open':
             selected_values = values.get('-TABLE-')
+            if selected_values == []:
+                #TODO: Add popup to warn no row selected
+                continue
             selected_value = selected_values[0]
-            print(selected_value)
-            print(data[selected_value])
-            workspace_path = Path(data[selected_value][1])
+            workspace_path = Path(df.loc[selected_value, 'Path'])
             if workspace_path.exists():
                 dwl.view_workspace(workspace_path, dsi_studio_path)
-        elif event == 'Approve':
+                df.loc[selected_value, 'Reviewed'] = True
+                data = dataframe_to_lists(df)
+                data_saved = False
+                window['-TABLE-'].update(values=data, select_rows=[selected_value])
+            else:
+                sg.popup('Workspace path not found!')
+        elif 'Approve' in event:
+            track = event.replace('Approve ','')
+            print(track)
+            assert track in tracks
             selected_values = values.get('-TABLE-')
+            if selected_values == []:
+                #TODO: Add popup
+                continue
             selected_value = selected_values[0]
-            data[selected_value][3] = 1
-            window['-TABLE-'].update(values=data)
-        # elif event == 'Change Colors':
-        #     window['-TABLE-'].update(row_colors=((8, 'white', 'red'), (9, 'green')))
+            df.loc[selected_value, f'{track} Approved'] = True
+            data = dataframe_to_lists(df)
+            data_saved = False
+            window['-TABLE-'].update(values=data, select_rows=[selected_value])
+        elif 'Exclude' in event:
+            track = event.replace('Exclude ','')
+            print(track)
+            assert track in tracks
+            selected_values = values.get('-TABLE-')
+            if selected_values == []:
+                #TODO: Add popup
+                continue
+            selected_value = selected_values[0]
+            df.loc[selected_value, f'{track} Approved'] = False
+            data = dataframe_to_lists(df)
+            data_saved = False
+            window['-TABLE-'].update(values=data, select_rows=[selected_value])
+        elif 'Comment' in event:
+            print(track)
+            track = event.replace('Comment ','')
+            assert track in tracks
+            comment = sg.popup_get_text(f'{track} Comment:')
+            selected_values = values.get('-TABLE-')
+            if selected_values == []:
+                #TODO: Add popup
+                continue
+            selected_value = selected_values[0]
+            df.loc[selected_value, f'{track} Comment'] = comment
+            data = dataframe_to_lists(df)
+            data_saved = False
+            window['-TABLE-'].update(values=data, select_rows=[selected_value])
+        elif event == 'Save':
+            save_results(file_path)
+            data_saved = True
 
     window.close()
 
