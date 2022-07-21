@@ -31,7 +31,6 @@ def main(file_path):
     data = dataframe_to_lists(df)
     headings = list(df.columns)
     tracks = [this.replace(' Approved', '') for this in headings if 'Approved' in this]
-    print(tracks)
     data_saved = True # Set to True when the data is the same as on file and False when not
 
     # ------ Window Layout ------
@@ -45,10 +44,18 @@ def main(file_path):
                         alternating_row_color='lightblue',
                         key='-TABLE-',
                         row_height=35,
-                        tooltip='This is a table')],
-              [sg.Button('Open')],
-              [sg.Button('Approve all'), sg.Button('Exclude all'), sg.Button(f'Comment all')],
-              [[sg.Button(f'Approve {track}'), sg.Button(f'Exclude {track}'), sg.Button(f'Comment {track}')] for track in tracks],
+                        enable_events=True,
+                        enable_click_events=True,
+                        bind_return_key=True,
+                        tooltip='QA table')],
+              [sg.Button('Open DSI Studio')],
+              [sg.Frame('', [
+                [sg.Button('Toggle all')] + [sg.Checkbox(f'Approve {track}', key=f'Chckbx-{track}', enable_events=True) for track in tracks],
+                [sg.Button(f'Comment {track}', key=f'Commt-{track}') for track in tracks],
+                [sg.Button('Comment all')],
+                [sg.Button('Toggle Review')]
+               ], visible=False, key='-FRAME-')],
+
               [sg.Button('Save')],
              ]
 
@@ -64,11 +71,15 @@ def main(file_path):
         df.to_csv(save_file, index=False)
         data_saved = True
 
+    def update_table(selected_row):
+        data = dataframe_to_lists(df)
+        data_saved = False
+        window['-TABLE-'].update(values=data, select_rows=[selected_row])
 
     # ------ Event Loop ------
     while True:
         event, values = window.read()
-        print(event, values)
+        #print(event, values)
 
         if event == sg.WIN_CLOSED:
             #res = sg.popup_ok_cancel('Have you saved your results?')
@@ -77,92 +88,98 @@ def main(file_path):
                 save_results(file_path)
             break
 
-        if event == 'Open':
+        if event == 'Open DSI Studio':
             selected_values = values.get('-TABLE-')
             if selected_values == []:
                 #TODO: Add popup to warn no row selected
                 continue
-            selected_value = selected_values[0]
-            workspace_path = Path(df.loc[selected_value, 'Path'])
+            selected_row = selected_values[0]
+            workspace_path = Path(df.loc[selected_row, 'Path'])
             if workspace_path.exists():
                 dwl.view_workspace(workspace_path, dsi_studio_path)
-                df.loc[selected_value, 'Reviewed'] = True
-                data = dataframe_to_lists(df)
-                data_saved = False
-                window['-TABLE-'].update(values=data, select_rows=[selected_value])
+                df.loc[selected_row, 'Reviewed'] = True
+                update_table(selected_row)
             else:
                 sg.popup('Workspace path not found!')
-        elif event == 'Approve all':
+
+        elif event == '-TABLE-':
             selected_values = values.get('-TABLE-')
             if selected_values == []:
-                #TODO: Add popup
+                frame = window['-FRAME-'].update('', visible=False)
                 continue
-            selected_value = selected_values[0]
+            selected_row = selected_values[0]
+            selected_subject = df.loc[selected_row, 'ID']
             for track in tracks:
-                df.loc[selected_value, f'{track} Approved'] = True
-            data = dataframe_to_lists(df)
-            data_saved = False
-            window['-TABLE-'].update(values=data, select_rows=[selected_value])
-        elif 'Approve' in event:
-            track = event.replace('Approve ','')
+                track_approved = df.loc[selected_row, f'{track} Approved']
+                if isinstance(track_approved, bool):
+                    window[f'Chckbx-{track}'].update(value=track_approved)
+                else:
+                    window[f'Chckbx-{track}'].update(value=False)
+            window['-FRAME-'].update(selected_subject, visible=True)
+
+        elif '+CLICKED+' in event:
+            # Double clicking on a comment cell
+            row, col = cell = event[2]
+            selected_col_name = df.columns[col]
+            if ' Comment' in selected_col_name:
+                existing_comment = df.loc[row, selected_col_name]
+                if not isinstance(existing_comment, str):
+                    existing_comment = ''
+                comment = sg.popup_get_text(f'{selected_col_name}:', default_text=existing_comment)
+
+                df.loc[row, selected_col_name] = comment
+                update_table(row)
+
+        elif event == 'Toggle all':
+            selected_values = values.get('-TABLE-')
+            selected_row = selected_values[0]
+            for track in tracks:
+                current_value = window[f'Chckbx-{track}'].get()
+                new_value = not current_value
+                window[f'Chckbx-{track}'].update(value=new_value)
+                df.loc[selected_row, f'{track} Approved'] = new_value
+            update_table(selected_row)
+
+        elif event == 'Toggle Review':
+            selected_values = values.get('-TABLE-')
+            selected_row = selected_values[0]
+            reviewed = df.loc[selected_row, 'Reviewed']
+            df.loc[selected_row, 'Reviewed'] = not reviewed
+            update_table(selected_row)
+
+        elif 'Chckbx-' in event:
+            track = event.replace('Chckbx-','')
             assert track in tracks
             selected_values = values.get('-TABLE-')
-            if selected_values == []:
-                #TODO: Add popup
-                continue
-            selected_value = selected_values[0]
-            df.loc[selected_value, f'{track} Approved'] = True
-            data = dataframe_to_lists(df)
-            data_saved = False
-            window['-TABLE-'].update(values=data, select_rows=[selected_value])
-        elif event == 'Exclude all':
-            selected_values = values.get('-TABLE-')
-            if selected_values == []:
-                #TODO: Add popup
-                continue
-            selected_value = selected_values[0]
-            for track in tracks:
-                df.loc[selected_value, f'{track} Approved'] = False
-            data = dataframe_to_lists(df)
-            data_saved = False
-            window['-TABLE-'].update(values=data, select_rows=[selected_value])
-        elif 'Exclude' in event:
-            track = event.replace('Exclude ','')
-            assert track in tracks
-            selected_values = values.get('-TABLE-')
-            if selected_values == []:
-                #TODO: Add popup
-                continue
-            selected_value = selected_values[0]
-            df.loc[selected_value, f'{track} Approved'] = False
-            data = dataframe_to_lists(df)
-            data_saved = False
-            window['-TABLE-'].update(values=data, select_rows=[selected_value])
+            selected_row = selected_values[0]
+            track_approved = window[f'Chckbx-{track}'].get()
+            df.loc[selected_row, f'{track} Approved'] = track_approved
+            update_table(selected_row)
+
         elif event == 'Comment all':
             comment = sg.popup_get_text(f'Comment:')
             selected_values = values.get('-TABLE-')
             if selected_values == []:
                 #TODO: Add popup
                 continue
-            selected_value = selected_values[0]
+            selected_row = selected_values[0]
             for track in tracks:
-                df.loc[selected_value, f'{track} Comment'] = comment
-            data = dataframe_to_lists(df)
-            data_saved = False
-            window['-TABLE-'].update(values=data, select_rows=[selected_value])
-        elif 'Comment' in event:
-            track = event.replace('Comment ','')
+                df.loc[selected_row, f'{track} Comment'] = comment
+            update_table(selected_row)
+
+        elif 'Commt' in event:
+            track = event.replace('Commt-','')
             assert track in tracks
-            comment = sg.popup_get_text(f'{track} Comment:')
             selected_values = values.get('-TABLE-')
-            if selected_values == []:
-                #TODO: Add popup
-                continue
-            selected_value = selected_values[0]
-            df.loc[selected_value, f'{track} Comment'] = comment
-            data = dataframe_to_lists(df)
-            data_saved = False
-            window['-TABLE-'].update(values=data, select_rows=[selected_value])
+            selected_row = selected_values[0]
+            existing_comment = df.loc[selected_row, f'{track} Comment']
+            if not isinstance(existing_comment, str):
+                existing_comment = ''
+            comment = sg.popup_get_text(f'{track} Comment:', default_text=existing_comment)
+
+            df.loc[selected_row, f'{track} Comment'] = comment
+            update_table(selected_row)
+
         elif event == 'Save':
             save_results(file_path)
             data_saved = True
