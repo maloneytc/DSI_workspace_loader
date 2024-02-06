@@ -14,7 +14,8 @@ def view_workspace(workspace_dir, dsi_studio_path):
              f'--source={str(source_file)}',
              '--stay_open=1',
              f'--cmd=load_workspace,{str(workspace_dir)}+add_surface']
-    res = sp.check_output(query)
+    #res = sp.check_output(query)
+    res = sp.call(query)
 
 def get_dsi_path():
     dsi_path_mac = Path('/Applications/dsi_studio.app/Contents/MacOS/dsi_studio')
