@@ -13,6 +13,11 @@ import pdb
     Basic use of the Table Element
 """
 
+# N.B. There are some bugs with registering mouse clicks on Mac Sonoma. 
+# The solution is to upgade your python installation to 3.12 and make sure tkinter version is >=8.6.13
+# Use the line below to check version information. 
+#print(sg.get_versions())
+
 sg.theme('BlueMono')
 
 
@@ -79,7 +84,6 @@ def main(file_path):
     # ------ Event Loop ------
     while True:
         event, values = window.read()
-        #print(event, values)
 
         if event == sg.WIN_CLOSED:
             #res = sg.popup_ok_cancel('Have you saved your results?')
@@ -120,6 +124,8 @@ def main(file_path):
         elif '+CLICKED+' in event:
             # Double clicking on a comment cell
             row, col = cell = event[2]
+            if row == -1: # indicates the header was clicked
+                continue
             selected_col_name = df.columns[col]
             if ' Comment' in selected_col_name:
                 existing_comment = df.loc[row, selected_col_name]
@@ -183,6 +189,8 @@ def main(file_path):
         elif event == 'Save':
             save_results(file_path)
             data_saved = True
+
+        window.refresh()
 
     window.close()
 
