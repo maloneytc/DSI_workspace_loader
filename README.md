@@ -1,4 +1,6 @@
 # DSI_workspace_loader
+Author: Tom Maloney malonetc@mail.uc.edu
+
 Simple utility scripts to load workspaces in DSI_Studio
 
 Usage: 
