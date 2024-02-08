@@ -9,9 +9,6 @@ import main as dwl
 
 import pdb
 
-"""
-    Basic use of the Table Element
-"""
 
 # N.B. There are some bugs with registering mouse clicks on Mac Sonoma. 
 # The solution is to upgade your python installation to 3.12 and make sure tkinter version is >=8.6.13
@@ -74,11 +71,9 @@ def main(file_path):
         save_file = sg.popup_get_file('Select file to save results to:', default_path=str(default_path))
         save_file = Path(save_file)
         df.to_csv(save_file, index=False)
-        data_saved = True
 
     def update_table(selected_row):
         data = dataframe_to_lists(df)
-        data_saved = False
         window['-TABLE-'].update(values=data, select_rows=[selected_row])
 
     # ------ Event Loop ------
@@ -103,6 +98,7 @@ def main(file_path):
                 dwl.view_workspace(workspace_path, dsi_studio_path)
                 df.loc[selected_row, 'Reviewed'] = True
                 update_table(selected_row)
+                data_saved = False
             else:
                 sg.popup('Workspace path not found!')
 
@@ -135,6 +131,7 @@ def main(file_path):
 
                 df.loc[row, selected_col_name] = comment
                 update_table(row)
+                data_saved = False
 
         elif event == 'Toggle all':
             selected_values = values.get('-TABLE-')
@@ -145,6 +142,7 @@ def main(file_path):
                 window[f'Chckbx-{track}'].update(value=new_value)
                 df.loc[selected_row, f'{track} Approved'] = new_value
             update_table(selected_row)
+            data_saved = False
 
         elif event == 'Toggle Review':
             selected_values = values.get('-TABLE-')
@@ -152,6 +150,7 @@ def main(file_path):
             reviewed = df.loc[selected_row, 'Reviewed']
             df.loc[selected_row, 'Reviewed'] = not reviewed
             update_table(selected_row)
+            data_saved = False
 
         elif 'Chckbx-' in event:
             track = event.replace('Chckbx-','')
@@ -161,6 +160,7 @@ def main(file_path):
             track_approved = window[f'Chckbx-{track}'].get()
             df.loc[selected_row, f'{track} Approved'] = track_approved
             update_table(selected_row)
+            data_saved = False
 
         elif event == 'Comment all':
             comment = sg.popup_get_text(f'Comment:')
@@ -172,6 +172,7 @@ def main(file_path):
             for track in tracks:
                 df.loc[selected_row, f'{track} Comment'] = comment
             update_table(selected_row)
+            data_saved = False
 
         elif 'Commt' in event:
             track = event.replace('Commt-','')
@@ -185,12 +186,16 @@ def main(file_path):
 
             df.loc[selected_row, f'{track} Comment'] = comment
             update_table(selected_row)
+            data_saved = False
 
         elif event == 'Save':
             save_results(file_path)
             data_saved = True
 
         window.refresh()
+
+    if not data_saved:
+        save_results(file_path)
 
     window.close()
 
