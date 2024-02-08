@@ -51,7 +51,7 @@ if __name__ == "__main__":
             if line.strip() == '':
                 continue
             try:
-            	subj_id, workspace_dir = line.strip().split(',')
+                subj_id, workspace_dir = line.strip().split(',')
             except ValueError:
                 subj_id = None
                 workspace_dir = line.strip()
