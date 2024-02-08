@@ -69,6 +69,8 @@ def main(file_path):
 
     def save_results(default_path):
         save_file = sg.popup_get_file('Select file to save results to:', default_path=str(default_path))
+        if save_file is None:
+            return
         save_file = Path(save_file)
         df.to_csv(save_file, index=False)
 
